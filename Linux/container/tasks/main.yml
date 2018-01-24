@@ -1,0 +1,108 @@
+---
+- name: Create CNI installation Dir
+  file:
+    path: /opt/cni/bin
+    owner: root
+    group: root
+    mode: 0644
+    state: directory
+
+- name: Check CNI installation  file existence
+  stat:
+    path: "/tmp/cni-plugins-amd64-{{CNI_VERSION}}.tgz"
+  register: _get_cni_file
+
+- block:
+  - name: Get Plugins file
+    get_url:
+      url: "{{item}}"
+      dest: /tmp/
+      mode: 0644
+    with_items:
+      - "https://github.com/containernetworking/plugins/releases/download/{{CNI_VERSION}}/cni-plugins-amd64-{{CNI_VERSION}}.tgz"
+
+  - name: Unarchive CNI tar file
+    unarchive:
+      src: "/tmp/cni-plugins-amd64-{{CNI_VERSION}}.tgz"
+      dest: /opt/cni/bin
+      remote_src: yes
+  when: _get_cni_file.stat.md5 is not defined
+
+- name: Get release info file
+  get_url: 
+    url: "{{item}}"
+    dest: /tmp/
+    mode: 0644
+  with_items:
+    - "https://dl.k8s.io/release/stable.txt"
+
+- name: Check release info file existence
+  stat:
+    path: /tmp/stable.txt
+  register: _get_info_file
+
+- name: Get release info
+  shell: /bin/bash -lc "cat /tmp/stable.txt"
+  register: _release_info
+  when: _get_info_file.stat.exists
+
+- debug: var=_release_info.stdout
+
+- name: Create kubernetes Dir
+  file:
+    path: /opt/bin
+    owner: root
+    group: root
+    mode: 0644
+    state: directory
+
+- name: Get kubernetes binaries
+  get_url:
+    url: "{{item}}"
+    dest: /opt/bin/
+    mode: 0744
+  with_items:
+    - "https://storage.googleapis.com/kubernetes-release/release/{{_release_info.stdout}}/bin/linux/amd64/kubeadm"
+    - "https://storage.googleapis.com/kubernetes-release/release/{{_release_info.stdout}}/bin/linux/amd64/kubectl"
+    - "https://storage.googleapis.com/kubernetes-release/release/{{_release_info.stdout}}/bin/linux/amd64/kubelet"
+
+- name: Get kubernetes service file
+  get_url:
+    url: "{{item}}"
+    dest: /etc/systemd/system/
+    mode: 0644
+  with_items:
+    - "https://raw.githubusercontent.com/kubernetes/kubernetes/{{_release_info.stdout}}/build/debs/kubelet.service"
+
+- name: Create kubernetes conf Dir
+  file:
+    path: /etc/systemd/system/kubelet.service.d
+    owner: root
+    group: root
+    mode: 0644
+    state: directory
+
+- name: Get kubernetes conf file
+  get_url:
+    url: "{{item}}"
+    dest: /etc/systemd/system/kubelet.service.d/
+    mode: 0644
+  with_items:
+    - "https://raw.githubusercontent.com/kubernetes/kubernetes/{{_release_info.stdout}}/build/debs/10-kubeadm.conf"
+
+
+- name: Change path in Downloaded files
+  replace:
+    dest: "{{item}}"
+    regexp: '/usr/bin'
+    replace: '/opt/bin'
+  with_items:
+    - /etc/systemd/system/kubelet.service
+    - /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+- name: Start kubernetes
+  systemd:
+    name: kubelet
+    state: started
+    enabled: yes
+

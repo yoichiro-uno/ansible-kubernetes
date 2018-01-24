@@ -1,0 +1,6 @@
+---
+- name: Create Kubernetes in container
+  hosts: all
+  become: yes
+  roles:
+    - container
