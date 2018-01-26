@@ -19,3 +19,10 @@ container_ports:
   - 10255:10255
 
 
+
+container_name: kubecon2
+container_image: centos
+container_ports:
+  - 10250:10250
+  - 10255:10255
+#  - "30000-32767:30000-32767"
