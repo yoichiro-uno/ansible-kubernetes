@@ -1,0 +1,6 @@
+---
+- name: Create Kubernetes for CentOS
+  hosts: all
+  become: yes
+  roles:
+    - kubernetes_master

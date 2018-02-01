@@ -1,0 +1,44 @@
+---
+- name: configure kubelete Settings
+  lineinfile:
+    path: "/etc/kubernetes/kubelet"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+      - { regexp: 'KUBELET_ADDRESS=', line: 'KUBELET_ADDRESS="--address=0.0.0.0"' }
+      - { regexp: 'KUBELET_PORT=', line: 'KUBELET_PORT="--port=10250"' }
+      - { regexp: 'KUBELET_HOSTNAME=', line: 'KUBELET_HOSTNAME="--hostname-override={{inventory_hostname}}"' }
+      - { regexp: 'KUBELET_API_SERVER=', line: 'KUBELET_API_SERVER="--api-servers=http://{{master_hostname}}:8080"' }
+      - { regexp: 'KUBELET_ARGS=', line: 'KUBELET_ARGS=""' }
+
+- name: Configure flannel(node)
+  lineinfile:
+    path: "/etc/sysconfig/flanneld"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+      - { regexp: 'FLANNEL_ETCD_ENDPOINTS=', line: 'FLANNEL_ETCD_ENDPOINTS="http://{{master_hostname}}:2379"'}
+      - { regexp: 'FLANNEL_ETCD_PREFIX=', line: 'FLANNEL_ETCD_PREFIX="{{ network_config_dir }}"'}
+
+- name: Restart Services
+  systemd:
+    name: "{{item}}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - kube-proxy
+    - kubelet
+    - flanneld
+    - docker
+
+- name: Configure kubectl default-cluster
+  shell: /bin/bash -lc "kubectl config set-cluster default-cluster --server=http://{{master_hostname}}:8080"
+
+- name: Configure kubectl default-context
+  shell: /bin/bash -lc "kubectl config set-context default-context --cluster=default-cluster --user=default-admin"
+
+- name: Configure kubectl use-context
+  shell: /bin/bash -lc "kubectl config use-context default-context"
+  

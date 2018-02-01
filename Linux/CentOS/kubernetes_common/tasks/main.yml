@@ -1,0 +1,56 @@
+---
+- name: write master to host file
+#  shell: /bin/bash -lc "echo {{master_ip}} {{master_hostname}} >> /etc/hosts"
+  lineinfile:
+    path: "/etc/hosts"
+    state: present
+#    regexp: "{{item.regexp}}"
+#    line: "{{item.line}}"
+    line: "{{master_ip}} {{master_hostname}}"
+#  with_items:
+#    - { regexp: '{{master_ip}}', line: '{{master_ip}} {{master_hostname}} '}
+
+- name: write members to host file
+#  shell: /bin/bash -lc "echo {{item.hostlist_ip}} {{item.hostlist_hostname}} >> /etc/hosts"
+  lineinfile:
+    path: "/etc/hosts"
+    state: present
+#    regexp: "{{item.regexp}}"
+#    regexp: "{{item.hostlist_ip}}"
+    line: "{{item.hostlist_ip}} {{item.hostlist_hostname}}"
+#  with_items:
+#    - { regexp: '{{item.hostlist_ip}}', line: '{{item.hostlist_ip}} {{item.hostlist_hostname}}  '}
+  with_items: 
+    - "{{ hostlist }}"
+
+
+
+
+- name: Add Repository
+  yum_repository:
+    name: virt7-docker-common-release
+    description: Kubernetes for CentOS
+    baseurl: http://cbs.centos.org/repos/virt7-docker-common-release/x86_64/os/
+    gpgcheck: no
+
+- name: Install Kubernetes, etcd and flannel
+  yum:
+    name: "{{item}}"
+    state: present
+  with_items:
+    - kubernetes
+    - etcd
+    - flannel
+
+- name: Edit Kubernetes config
+  lineinfile:
+    path: "/etc/kubernetes/config"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+    - { regexp: 'KUBE_LOGTOSTDERR=', line: 'KUBE_LOGTOSTDERR="--logtostderr=true"'}
+    - { regexp: 'KUBE_LOG_LEVEL=', line: 'KUBE_LOG_LEVEL="--v=0"'}
+    - { regexp: 'KUBE_ALLOW_PRIV=', line: 'KUBE_ALLOW_PRIV="--allow-privileged=false"'}
+    - { regexp: 'KUBE_MASTER=', line: 'KUBE_MASTER="--master=http://{{master_hostname}}:8080"'}
+  

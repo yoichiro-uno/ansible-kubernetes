@@ -1,0 +1,64 @@
+---
+- name: Configure etcd.conf
+  lineinfile:
+    path: "/etc/etcd/etcd.conf"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+      - { regexp: 'ETCD_NAME=', line: 'ETCD_NAME=default'}
+      - { regexp: 'ETCD_DATA_DIR=', line: 'ETCD_DATA_DIR="/var/lib/etcd/default.etcd"'}
+      - { regexp: 'ETCD_LISTEN_CLIENT_URLS=', line: 'ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"'}
+      - { regexp: 'ETCD_ADVERTISE_CLIENT_URLS=', line: 'ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"'}
+
+- name: Configure apiserver
+  lineinfile:
+    path: "/etc/kubernetes/apiserver"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+      - { regexp: 'KUBE_API_ADDRESS=', line: 'KUBE_API_ADDRESS="--address=0.0.0.0"'}
+      - { regexp: 'KUBE_API_PORT=', line: 'KUBE_API_PORT="--port=8080"'}
+      - { regexp: 'KUBELET_PORT=', line: 'KUBELET_PORT="--kubelet-port=10250"'}
+      - { regexp: 'KUBE_ETCD_SERVERS=', line: 'KUBE_ETCD_SERVERS="--etcd-servers=http://{{master_hostname}}:2379"'}
+      - { regexp: 'KUBE_SERVICE_ADDRESSES=', line: 'KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"'}
+      - { regexp: 'KUBE_API_ARGS=', line: 'KUBE_API_ARGS=""'}
+
+- name: Start etcd Service
+  systemd:
+    name: etcd
+    state: started
+    enabled: yes
+
+- name: Create dir for NW configuration
+  shell: /bin/bash -lc "etcdctl mkdir {{ network_config_dir }}"
+  register: _etcdctl_mkdir_result
+
+- name: Configure network
+  shell: /bin/bash -lc "etcdctl mk {{ network_config_dir }}/config {% raw %}'{ 'Network': '{% endraw %}{{network_address}}{% raw %}', 'SubnetLen': '24', 'Backend': { \'Type\': \'vxlan\' }}'{% endraw %} "
+  register: _etcdctl_mk_result
+
+- name: Configure flannel
+  lineinfile:
+    path: "/etc/sysconfig/flanneld"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+      - { regexp: 'FLANNEL_ETCD_ENDPOINTS=', line: 'FLANNEL_ETCD_ENDPOINTS="http://{{master_hostname}}:2379"'}
+      - { regexp: 'FLANNEL_ETCD_PREFIX=', line: 'FLANNEL_ETCD_PREFIX="{{ network_config_dir }}"'}
+
+- name: Restart Services
+  systemd:
+    name: "{{item}}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - etcd
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - flanneld
+
+

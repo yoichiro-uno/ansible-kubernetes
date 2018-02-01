@@ -1,0 +1,2 @@
+network_config_dir: /opt/kube-centos/network
+network_address: 172.30.0.0/16
