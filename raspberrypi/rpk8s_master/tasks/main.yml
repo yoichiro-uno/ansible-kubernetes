@@ -1,0 +1,49 @@
+---
+- name: set hostname
+  hostname: 
+    name: "{{ inventory_hostname }}"
+
+- name: add group "docker"
+  group: 
+    name: docker
+
+- name: add user "docker"
+  user: 
+    name: docker
+    group: docker
+    home: "/home/docker"
+
+- name: Set kubelet service to start on boot.
+  service: 
+    name: kubelet
+    enabled: yes
+
+- name: Init k8s-master
+  shell: /bin/bash -lc "kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address={{ ansible_default_ipv4.address }}"
+
+- name: Make .kube Directory
+  file:
+    path: /home/docker/.kube
+    state: directory
+    owner: docker
+    group: docker
+    mode: 0755
+
+- name: Copy admin.conf to .kube/config
+  file:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/docker/.kube/config
+    owner: docker
+    group: docker
+    remote_src: yes
+    mode: 0600
+
+#- name: Export Kubernetes
+#  lineinfile:
+#    path: /home/docker/.kube/config
+#    state: absent
+#    regexp: '^%KUBECONFIG'
+
+- name: Create flannel Network
+#  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml |sed 's/amd64/arm/g'"
+  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"

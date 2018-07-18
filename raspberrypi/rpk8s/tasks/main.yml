@@ -1,0 +1,46 @@
+---
+- name: Add gpg Key for K8S repository
+  apt_key:
+    url: "{{ item }}"
+    state: present
+  with_items:
+    - https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+#- name: Create Repository file for K8S
+#  shell: bash -lc 'echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list'
+
+- name: Delete K8S repository files
+  file:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/apt/sources.list.d/kubernetes.list
+
+- name: Create K8S repository files
+  file:
+    name: "{{ item }}"
+    state: touch
+  with_items:
+    - /etc/apt/sources.list.d/kubernetes.list
+
+- name: Add K8S repository Info to the list
+  lineinfile:
+    path: /etc/apt/sources.list.d/kubernetes.list
+    line: "{{ item }}"
+  with_items:
+    - 'deb http://apt.kubernetes.io/ kubernetes-xenial main'
+
+- name: Update repo Cache
+  apt:
+    update_cache: yes
+
+- name: Install K8S
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - kubelet
+    - kubeadm
+    - kubectl
+#    - kubernetes-cni
+
