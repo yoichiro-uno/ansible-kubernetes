@@ -14,12 +14,21 @@
     home: "/home/docker"
 
 - name: Set kubelet service to start on boot.
-  service: 
+  systemd: 
     name: kubelet
+    state: started
     enabled: yes
+
+- name: Check if K8s-master is running
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: _conffile_stat
+
 
 - name: Init k8s-master
   shell: /bin/bash -lc "kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address={{ ansible_default_ipv4.address }}"
+  register: _result_init_k8s
+  when: not _conffile_stat.stat.exists
 
 - name: Make .kube Directory
   file:
@@ -30,7 +39,7 @@
     mode: 0755
 
 - name: Copy admin.conf to .kube/config
-  file:
+  copy:
     src: /etc/kubernetes/admin.conf
     dest: /home/docker/.kube/config
     owner: docker
@@ -45,5 +54,12 @@
 #    regexp: '^%KUBECONFIG'
 
 - name: Create flannel Network
-#  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml |sed 's/amd64/arm/g'"
-  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml |sed 's/amd64/arm/g'"
+#  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  register: _result_apply_flannel
+
+
+- name: restart kubelet
+  systemd:
+    name: kubelet
+    state: restarted 
