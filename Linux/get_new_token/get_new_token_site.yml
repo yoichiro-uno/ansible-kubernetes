@@ -1,0 +1,6 @@
+---
+- name: Get New Token 
+  hosts: all
+  become: yes
+  roles:
+    - get_new_token

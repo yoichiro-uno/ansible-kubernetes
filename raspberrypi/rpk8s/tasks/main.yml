@@ -1,4 +1,18 @@
 ---
+- name: set hostname
+  hostname: 
+    name: "{{ my_host_var }}"
+
+- name: add group "docker"
+  group: 
+    name: docker
+
+- name: add user "docker"
+  user: 
+    name: docker
+    group: docker
+    home: "/home/docker"
+
 - name: Add gpg Key for K8S repository
   apt_key:
     url: "{{ item }}"

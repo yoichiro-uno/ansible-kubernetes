@@ -1,8 +1,4 @@
 ---
-- name: set hostname
-  hostname: 
-    name: "{{ inventory_hostname }}"
-
 - name: add group "docker"
   group: 
     name: docker
@@ -47,6 +43,12 @@
     remote_src: yes
     mode: 0600
 
+- name: Set KUBECONFIG env
+  template:
+    src: kubernetes.sh.j2
+    dest: /etc/profile.d/kubernetes.sh
+    mode: 0644
+
 #- name: Export Kubernetes
 #  lineinfile:
 #    path: /home/docker/.kube/config
@@ -54,8 +56,10 @@
 #    regexp: '^%KUBECONFIG'
 
 - name: Create flannel Network
-  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml |sed 's/amd64/arm/g'"
-#  shell: /bin/bash -lc "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+#  become: yes
+#  become_user: docker
+  shell: /bin/bash -lc "cd /home/docker;kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml |sed 's/amd64/arm/g'"
+#  shell: /bin/bash -lc "cd /home/docker;kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
   register: _result_apply_flannel
 
 
