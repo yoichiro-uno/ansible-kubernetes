@@ -1,7 +1,4 @@
 ---
-- name: set hostname
-  hostname: "{{ my_host_var }}"
-
 - name: add group "docker"
   group: 
     name: docker
@@ -12,7 +9,13 @@
     group: docker
     home: "/home/docker"
 
-- name: Join K8S cluster
-  shell: /bin/bash -lc "{{ token_info }}}"
+- name: Check if aready joined to Cluster
+  stat:
+    path: /var/lib/kubelet/config.yaml
+  register: _joined
 
+- name: Join K8S cluster
+#  shell: /bin/bash -lc "{{ token_info }}}"
+  shell: "{{ token_info }}"
+  when: not _joined.stat.exists
 

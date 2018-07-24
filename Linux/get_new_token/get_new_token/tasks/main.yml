@@ -3,6 +3,11 @@
   shell: kubeadm token create --print-join-command
   register: _token_info
 
-- name: Set token info to var
-  set_fact:
-    token_info: "{{ _token_info.stdout_lines[0] }}"
+#- name: Set token info to var
+#  set_fact:
+#    token_info: "{{ _token_info.stdout_lines[0] }}"
+
+- name: Pass token info to next job template
+  set_stats:
+    data: 
+      token_info: "{{ _token_info.stdout_lines[0] }}"

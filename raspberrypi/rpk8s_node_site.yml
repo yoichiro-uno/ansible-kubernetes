@@ -1,0 +1,6 @@
+---
+- name: Setup K8S Nodes 
+  hosts: all
+  become: yes
+  roles:
+    - rpk8s_node
